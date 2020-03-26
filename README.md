@@ -4,13 +4,13 @@
 
 The purpose of this node script is to transform content (news and articles) from a Contao v3.x CMS, exported as .csv, so it then can easily be imported into WordPress by using one of the many CSV import plugins.
 
-Contao (at least in v3.x) stores it's content in a very unusual manner into the database. Each news and article creates a table row in the corresponding table (`tl_news`, ...) which holds information like `id, headline, author` (as ID) and a `teaser`. This I will refer to as **container**. The **content** on the other hand is stored in another table, the `tl_content` table. This table contains then, as the name suggests, the content of the container. Each container has multiple entries here (One-to-many relationship). The mapping is as following:
+Contao (at least in v3.x) stores its content in a very unusual manner into the database. Each news and article creates a table row in the corresponding table (`tl_news, tl_article`) which holds information like `id, headline, author` (as ID) and a `teaser`. This I will refer to as **container**. The **content** for the container on the other hand is stored in another table, the `tl_content` table. This table contains then, as the name suggests, the content of the containers. Each container has multiple entries here (One-to-many relationship). The mapping is as following:
 
-`content.pid === container.id && content.ptable === [container table name] || null`
+`content.pid === container.id && (content.ptable === [container table name] || null)`
 
 The entries for each container are sorted by `content.sorting` ascending. In addition, the Contao and WordPress CMSes are using different time formats for storing their content.
 
-This script is doing all of that automatically.
+This script's main purpose is to merge the content back to the container.
 
 ## What the script can do
 
@@ -31,12 +31,12 @@ This script is doing all of that automatically.
 
 The script needs the following files from the Contao database in the **import** folder:
 
-- `tl_content.csv`
-- `tl_news.csv`
-- `tl_article.csv`
-- `tl_page.csv`
-- `tl_news_archive.csv`
-- `tl_user.csv`
+- `tl_content.csv` - huge table that includes the content for all news and articles
+- `tl_news.csv` - container table for news
+- `tl_article.csv` - container table for articles
+- `tl_page.csv` - used to add the category to news and articles
+- `tl_news_archive.csv` - used to add the category to news and articles
+- `tl_user.csv` - has information about the user names
 
 A database table export in .csv format can be done via phpMyAdmin.
 
@@ -59,7 +59,8 @@ Needs `node` and `npm` to be installed.
 ### Whitelist content:
 
 - Create array of categories that should be whitelisted (e.g. `articleWhitelist`)
-- Add `passWhitelistFilter` function in `transformer` after the `addFields()` was called, like so:
+- Add `passWhitelistFilter` function in `transformer` after `addFields()` was called, like so:
+
 ```javascript
 const transformer = async () => {
   ...
