@@ -95,8 +95,8 @@ const importAllCsv = () => {
     importCsv("article"),
     importCsv("page"),
     importCsv("news_archive"),
-    importCsv("user"),
-    importCsv("files")
+    importCsv("user")
+    // importCsv("files")
   ]);
 };
 
@@ -295,8 +295,8 @@ const transformer = async () => {
     rawArticles,
     rawPages,
     rawNewsArchive,
-    rawUsers,
-    rawFiles
+    rawUsers
+    // rawFiles
   ] = await importAllCsv();
   const content = modifyCsv(rawContent, "content");
   let news = modifyCsv(rawNews, "news");
@@ -307,7 +307,7 @@ const transformer = async () => {
   articles = addContent(articles, content, "article");
   news = addFields(news, pageMap, userMap);
   articles = addFields(articles, pageMap, userMap);
-  articles = passWhitelistFilter(articles, articleWhitelist);
+  // articles = passWhitelistFilter(articles, articleWhitelist);
   pageMap = addPageStatistics([news, articles], pageMap, ["news", "article"]);
   const userStatistics = addUserStatistics([news, articles]);
   console.log(
