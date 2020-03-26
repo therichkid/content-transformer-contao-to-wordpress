@@ -1,0 +1,13 @@
+{
+  "name": "content-transformer-contao-to-wordpress",
+  "version": "1.0.0",
+  "main": "content-transformer.js",
+  "dependencies": {
+    "csv-parser": "^2.3.2",
+    "csv-writer": "^1.6.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
