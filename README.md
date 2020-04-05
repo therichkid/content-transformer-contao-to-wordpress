@@ -1,5 +1,23 @@
 # content-transformer-contao-to-wordpress
 
+## Used libraries
+
+| Project         | Status                                           |
+| --------------- | ------------------------------------------------ |
+| [csv-parser]    | [![csv-parser-status]][csv-parser-package]       |
+| [csv-writer]    | [![csv-writer-status]][csv-writer-package]       |
+| [sanitize-html] | [![sanitize-html-status]][sanitize-html-package] |
+
+[csv-parser]: https://github.com/mafintosh/csv-parser
+[csv-writer]: https://github.com/ryu1kn/csv-writer
+[sanitize-html]: https://github.com/apostrophecms/sanitize-html
+[csv-parser-status]: https://img.shields.io/npm/v/csv-parser.svg
+[csv-writer-status]: https://img.shields.io/npm/v/csv-writer.svg
+[sanitize-html-status]: https://img.shields.io/npm/v/sanitize-html.svg
+[csv-parser-package]: https://www.npmjs.com/package/csv-parser
+[csv-writer-package]: https://www.npmjs.com/package/csv-writer
+[sanitize-html-package]: https://www.npmjs.com/package/sanitize-html
+
 ## Introduction
 
 The purpose of this node script is to transform content (news and articles) from a Contao v3.x CMS, exported as .csv, so it then can easily be imported into WordPress by using one of the many CSV import plugins.
@@ -44,13 +62,33 @@ A database table export in .csv format can be done via phpMyAdmin.
 
 **Important**: The first row needs to be the column names.
 
-## How to run
+## User settings
 
-Needs `node` and `npm` to be installed.
+Set the options in the beginning of the `content-transformer.js` file.
 
-`npm install`
+### Filter content by date:
 
-`node content-transformer.js`
+- Set `useDateFilter` to true
+- Set the options in `datefilter`:
+  - `timeStamp`: Date in [Unix timestamp format](https://www.unixtimestamp.com/index.php) as Integer
+  - `operator`: As String
+    - `"<"`: Keep all content **older** than the timestamp
+    - `">"`: Keep all content **newer** than the timestamp
+
+### Sanitize content:
+
+- Set `useSanitizer` to true.
+
+What it does:
+
+- Remove Contao tags in square brackets
+- Use standard settings from `sanitize-html`
+- Remove empty paragraphs
+
+### Whitelist content:
+
+- Set `useNewsWhitelist` or `useArticleWhitelist` to true
+- Add categories as string to `newsWhitelist` or `articleWhitelist` array that should be whitelisted
 
 ### Remap categories:
 
@@ -58,25 +96,19 @@ Needs `node` and `npm` to be installed.
 - Key: old category name in Contao
 - Value: new category name in WordPress
 
-### Whitelist content:
-
-- Create array of categories that should be whitelisted (e.g. `articleWhitelist`)
-- Add `passWhitelistFilter` function in `transformer` after `addFields()` was called, like so:
-
-```javascript
-const transformer = async () => {
-  ...
-  articles = addFields(...);
-  articles = passWhitelistFilter(articles, articleWhitelist);
-  ...
-}
-```
-
 ### Remap users
 
 - Modify `userRemap` map
 - Key: old user name in Contao
 - Value: new user name in WordPress
+
+## How to run
+
+Needs `node` and `npm` to be installed.
+
+`npm install`
+
+`node content-transformer.js`
 
 ## Result
 
@@ -87,5 +119,4 @@ The script creates two files in the export folder:
 
 These files can then be imported into WordPress. Following WordPress plugins were tested successfully:
 
-- [WP All Import](https://wordpress.org/plugins/wp-all-import/)
 - [WP Ultimate CSV Importer](https://de.wordpress.org/plugins/wp-ultimate-csv-importer/)
