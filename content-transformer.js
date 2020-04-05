@@ -17,7 +17,7 @@ const useNewsWhitelist = false;
 const newsWhitelist = [];
 
 const useArticleWhitelist = true;
-const articleWhitelist = ["Erfahrungen", "Presse", "Texte", "Videos"];
+const articleWhitelist = ["Erfahrungen", "Presse", "Gedichte", "Texte", "Videos"];
 
 const categoryRemap = {
   "BayCIV :: Aktiv": "BayCIV",
@@ -210,7 +210,7 @@ const sanitizeContent = text => {
     return "";
   }
   // Remove Contao tags in square brackets
-  text = text.replace("[nbsp]", "<br />").replace(/\[*?\]/gm, " ");
+  text = text.replace(/\[nbsp\]/gm, "<br>").replace(/\[[^\]]*\]/gm, " ");
   text = sanitizeHtml(text, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat(["h2"])
   });
