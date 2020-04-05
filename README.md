@@ -34,9 +34,10 @@ This script's main purpose is to merge the content back to the container.
 
 - Transform **news**
 - Transform **articles**
+- Sanitize content
 - Add categories based on the pages and news archive tables
-- Remap categories
 - Only keep content from whitelisted categories
+- Remap categories
 - Add and remap authors
 - Remove empty containers
 - Create ready-to-use .csv files to be imported into WordPress via a plugin
@@ -66,7 +67,7 @@ A database table export in .csv format can be done via phpMyAdmin.
 
 Set the options in the beginning of the `content-transformer.js` file.
 
-### Filter content by date:
+### Filter content by date
 
 - Set `useDateFilter` to true
 - Set the options in `datefilter`:
@@ -75,7 +76,7 @@ Set the options in the beginning of the `content-transformer.js` file.
     - `"<"`: Keep all content **older** than the timestamp
     - `">"`: Keep all content **newer** than the timestamp
 
-### Sanitize content:
+### Sanitize content
 
 - Set `useSanitizer` to true.
 
@@ -85,12 +86,12 @@ What it does:
 - Use standard settings from `sanitize-html`
 - Remove empty paragraphs
 
-### Whitelist content:
+### Whitelist content
 
 - Set `useNewsWhitelist` or `useArticleWhitelist` to true
 - Add categories as string to `newsWhitelist` or `articleWhitelist` array that should be whitelisted
 
-### Remap categories:
+### Remap categories
 
 - Modify `categoryRemap` map
 - Key: old category name in Contao
