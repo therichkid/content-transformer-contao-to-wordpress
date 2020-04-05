@@ -4,7 +4,9 @@
   "main": "content-transformer.js",
   "dependencies": {
     "csv-parser": "^2.3.2",
-    "csv-writer": "^1.6.0"
+    "csv-writer": "^1.6.0",
+    "prettier": "^2.0.2",
+    "sanitize-html": "^1.22.1"
   },
   "devDependencies": {},
   "scripts": {

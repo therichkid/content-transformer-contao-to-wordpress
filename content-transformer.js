@@ -1,56 +1,23 @@
 const csvParser = require("csv-parser");
-
 const fs = require("fs");
+const sanitizeHtml = require("sanitize-html");
 
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 
-const csvWriterHeader = [
-  { id: "title", title: "Title" },
-  { id: "text", title: "Content" },
-  { id: "teaser", title: "Excerpt" },
-  { id: "date", title: "Date" },
-  { id: "user", title: "Author" },
-  { id: "category", title: "Category" }
-  // { id: "singleSRC", title: "Featured Image" }
-];
-
-const columnsToKeep = {
-  content: {
-    id: "int",
-    pid: "int",
-    sorting: "int",
-    tstamp: "int",
-    type: "string",
-    text: "string",
-    singleSRC: "string",
-    ptable: "string"
-  },
-  news: {
-    id: "int",
-    pid: "int",
-    tstamp: "int",
-    headline: "string",
-    author: "int",
-    date: "int",
-    teaser: "string",
-    singleSRC: "string"
-  },
-  article: {
-    id: "int",
-    pid: "int",
-    tstamp: "int",
-    title: "string",
-    author: "int"
-  }
+// USER SETTINGS START
+const useDateFilter = true;
+const dateFilter = {
+  timeStamp: 1546300800, // In unix timestamp format: https://www.unixtimestamp.com/index.php
+  operator: "<" // Allowed options: <>
 };
 
-const articleWhitelist = [
-  "Erfahrungen",
-  "Presse",
-  "Texte",
-  // "Gedichte",
-  "Videos"
-];
+const useSanitizer = true;
+
+const useNewsWhitelist = false;
+const newsWhitelist = [];
+
+const useArticleWhitelist = true;
+const articleWhitelist = ["Erfahrungen", "Presse", "Texte", "Videos"];
 
 const categoryRemap = {
   "BayCIV :: Aktiv": "BayCIV",
@@ -71,6 +38,50 @@ const userRemap = {
   "René Zille": "renez",
   "Olaf Dathe": "olafd",
   "Christa Stroehl": "christas"
+};
+
+const showStatistics = false;
+// USER SETTINGS END
+
+const csvWriterHeader = [
+  { id: "title", title: "Title" },
+  { id: "text", title: "Content" },
+  { id: "teaser", title: "Excerpt" },
+  { id: "date", title: "Date" },
+  { id: "user", title: "Author" },
+  { id: "category", title: "Category" }
+  // { id: "singleSRC", title: "Featured Image" }
+];
+
+const columnsToKeep = {
+  content: {
+    id: "int",
+    pid: "int",
+    sorting: "int",
+    tstamp: "int",
+    type: "string",
+    text: "string",
+    // singleSRC: "string",
+    ptable: "string"
+  },
+  news: {
+    id: "int",
+    pid: "int",
+    tstamp: "int",
+    headline: "string",
+    author: "int",
+    date: "int",
+    teaser: "string"
+    // singleSRC: "string"
+  },
+  article: {
+    id: "int",
+    pid: "int",
+    tstamp: "int",
+    title: "string",
+    teaser: "string",
+    author: "int"
+  }
 };
 
 const importCsv = type => {
@@ -158,10 +169,7 @@ const addContent = (containers, content, type) => {
   for (const container of containers) {
     const matchingTexts = [];
     for (const text of content) {
-      if (
-        text.pid === container.id &&
-        (!text.ptable || text.ptable === `tl_${type}`)
-      ) {
+      if (text.pid === container.id && (!text.ptable || text.ptable === `tl_${type}`)) {
         matchingTexts.push(text);
         if (Math.abs(text.tstamp - container.tstamp) > 50000) {
           // console.log("Warning: Timestamp Mismatch!");
@@ -176,14 +184,39 @@ const addContent = (containers, content, type) => {
       container.text += matchingText.text;
     }
   }
-  // Remove empty containers
+  // Remove empty containers & sanitize text and teaser
   for (let i = containers.length - 1; i >= 0; i--) {
     const container = containers[i];
-    if (!container.text) {
-      containers.splice(i, 1);
+    if (useDateFilter) {
+      if (
+        !container.text ||
+        (dateFilter.operator === "<" && container.tstamp > dateFilter.timeStamp) ||
+        (dateFilter.operator === ">" && container.tstamp < dateFilter.timeStamp)
+      ) {
+        containers.splice(i, 1);
+        continue;
+      }
+    }
+    if (useSanitizer) {
+      container.text = sanitizeContent(container.text);
+      container.teaser = sanitizeContent(container.teaser);
     }
   }
   return containers;
+};
+
+const sanitizeContent = text => {
+  if (!text || text.toUpperCase() === "NULL") {
+    return "";
+  }
+  // Remove Contao tags in square brackets
+  text = text.replace("[nbsp]", "<br />").replace(/\[*?\]/gm, " ");
+  text = sanitizeHtml(text, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["h2"])
+  });
+  // Remove empty paragraphs
+  text = text.replace(/<p>\s*<\/p>/gm, "");
+  return text;
 };
 
 const convertTimeStamp = timeStamp => {
@@ -200,25 +233,19 @@ const convertTimeStamp = timeStamp => {
     .padStart(2, "0")}:${d
     .getMinutes()
     .toString()
-    .padStart(2, "0")}:${d
-    .getSeconds()
-    .toString()
-    .padStart(2, "0")}`;
+    .padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
 };
 
 const addFields = (containers, pageMap, userMap) => {
   for (const container of containers) {
     container.date = convertTimeStamp(container.tstamp);
-    container.category = pageMap[container.pid]
-      ? pageMap[container.pid].name
-      : "";
+    container.category = pageMap[container.pid] ? pageMap[container.pid].name : "";
     // Remap category
     if (categoryRemap[container.category]) {
       container.category = categoryRemap[container.category];
     }
     // User and remap user
-    container.user =
-      userRemap[userMap[container.author]] || userMap[container.author];
+    container.user = userRemap[userMap[container.author]] || userMap[container.author];
     if (container.headline) {
       container.title = container.headline;
       delete container.headline;
@@ -307,17 +334,24 @@ const transformer = async () => {
   articles = addContent(articles, content, "article");
   news = addFields(news, pageMap, userMap);
   articles = addFields(articles, pageMap, userMap);
-  // articles = passWhitelistFilter(articles, articleWhitelist);
-  pageMap = addPageStatistics([news, articles], pageMap, ["news", "article"]);
-  const userStatistics = addUserStatistics([news, articles]);
-  console.log(
-    `Containers before Remove: # of News ${rawNews.length}, # of Articles ${rawArticles.length}`
-  );
-  console.log(
-    `Containers after Remove: # of News ${news.length}, # of Articles ${articles.length}.`
-  );
-  // console.log("Page Map with Statistics", pageMap);
-  console.log("User Statistics", userStatistics);
+  if (useNewsWhitelist) {
+    news = passWhitelistFilter(news, newsWhitelist);
+  }
+  if (useArticleWhitelist) {
+    articles = passWhitelistFilter(articles, articleWhitelist);
+  }
+  if (showStatistics) {
+    pageMap = addPageStatistics([news, articles], pageMap, ["news", "article"]);
+    const userStatistics = addUserStatistics([news, articles]);
+    console.log(
+      `Containers before Remove: # of News ${rawNews.length}, # of Articles ${rawArticles.length}`
+    );
+    console.log(
+      `Containers after Remove: # of News ${news.length}, # of Articles ${articles.length}.`
+    );
+    console.log("Page Map with Statistics", pageMap);
+    console.log("User Statistics", userStatistics);
+  }
   await exportCsv(news, "news");
   await exportCsv(articles, "articles");
 };
