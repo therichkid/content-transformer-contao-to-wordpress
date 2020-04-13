@@ -28,7 +28,9 @@ const categoryRemap = {
   "SHG Campus Lauscher": "Campus Lauscher",
   "SHG OhrRing Bamberg": "SHG OhrRing",
   "CI Gruppe Würzburg": "CI-Gruppe Würzburg",
-  "SHG Hören und Leben": "Hören und Leben"
+  "SHG Hören und Leben": "Hören und Leben",
+  "SHG Münchner Hörkinder": "Münchner Hörkinder",
+  "SHG Ganz Ohr München": "Ganz Ohr – Selbsthilfegruppe im Klinikum rechts der Isar"
 };
 
 const userRemap = {
