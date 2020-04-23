@@ -11,6 +11,13 @@ const dateFilter = {
   operator: "<" // Allowed options: <>
 };
 
+const addEvents = false;
+const useEventDateFilter = true;
+const eventDateFilter = {
+  timeStamp: 1577836800,
+  operator: ">"
+};
+
 const useSanitizer = true;
 
 const useNewsWhitelist = false;
@@ -42,17 +49,25 @@ const userRemap = {
   "Christa Stroehl": "christas"
 };
 
-const showStatistics = false;
+const showStatistics = true;
 // USER SETTINGS END
 
-const csvWriterHeader = [
+const defaultCsvWriterHeader = [
   { id: "title", title: "Title" },
   { id: "text", title: "Content" },
   { id: "teaser", title: "Excerpt" },
   { id: "date", title: "Date" },
   { id: "user", title: "Author" },
   { id: "category", title: "Category" }
-  // { id: "singleSRC", title: "Featured Image" }
+];
+
+const eventCsvWriterHeader = [
+  { id: "title", title: "Title" },
+  { id: "user", title: "Author" },
+  { id: "startTime", title: "Start Time" },
+  { id: "endTime", title: "End Time" },
+  { id: "location", title: "Location" },
+  { id: "category", title: "Category" }
 ];
 
 const columnsToKeep = {
@@ -63,7 +78,6 @@ const columnsToKeep = {
     tstamp: "int",
     type: "string",
     text: "string",
-    // singleSRC: "string",
     ptable: "string"
   },
   news: {
@@ -74,7 +88,6 @@ const columnsToKeep = {
     author: "int",
     date: "int",
     teaser: "string"
-    // singleSRC: "string"
   },
   article: {
     id: "int",
@@ -83,6 +96,15 @@ const columnsToKeep = {
     title: "string",
     teaser: "string",
     author: "int"
+  },
+  event: {
+    id: "int",
+    pid: "int",
+    title: "string",
+    author: "int",
+    startTime: "int",
+    endTime: "int",
+    location: "string"
   }
 };
 
@@ -106,10 +128,11 @@ const importAllCsv = () => {
     importCsv("content"),
     importCsv("news"),
     importCsv("article"),
-    importCsv("page"),
     importCsv("news_archive"),
-    importCsv("user")
-    // importCsv("files")
+    importCsv("page"),
+    importCsv("user"),
+    addEvents ? importCsv("calendar_events") : [],
+    addEvents ? importCsv("calendar") : []
   ]);
 };
 
@@ -139,22 +162,10 @@ const modifyCsv = (arr, type) => {
   return newArr;
 };
 
-const createPageMap = (...arrs) => {
-  const map = {
-    0: {
-      name: "Unmatched",
-      news: 0,
-      articles: 0
-    }
-  };
-  for (const arr of arrs) {
-    for (const row of arr) {
-      map[row.id] = {
-        name: row.title.replace(/&.+;\s*/g, ""),
-        news: 0,
-        article: 0
-      };
-    }
+const createCategoryMap = arr => {
+  const map = {};
+  for (const row of arr) {
+    map[row.id] = row.title.replace(/&.+;\s*/g, "");
   }
   return map;
 };
@@ -191,7 +202,6 @@ const addContent = (containers, content, type) => {
     const container = containers[i];
     if (useDateFilter) {
       if (
-        !container.text ||
         (dateFilter.operator === "<" && container.tstamp > dateFilter.timeStamp) ||
         (dateFilter.operator === ">" && container.tstamp < dateFilter.timeStamp)
       ) {
@@ -202,6 +212,9 @@ const addContent = (containers, content, type) => {
     if (useSanitizer) {
       container.text = sanitizeContent(container.text);
       container.teaser = sanitizeContent(container.teaser);
+    }
+    if (!container.text) {
+      containers.splice(i, 1);
     }
   }
   return containers;
@@ -238,10 +251,10 @@ const convertTimeStamp = timeStamp => {
     .padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
 };
 
-const addFields = (containers, pageMap, userMap) => {
+const addFields = (containers, categoryMap, userMap) => {
   for (const container of containers) {
     container.date = convertTimeStamp(container.tstamp);
-    container.category = pageMap[container.pid] ? pageMap[container.pid].name : "";
+    container.category = categoryMap[container.pid] || "";
     // Remap category
     if (categoryRemap[container.category]) {
       container.category = categoryRemap[container.category];
@@ -270,36 +283,39 @@ const passWhitelistFilter = (containers, whitelist) => {
   return whitelistedContainers;
 };
 
+const addEventFields = (events, categoryMap, userMap) => {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i];
+    if (useEventDateFilter) {
+      if (
+        (eventDateFilter.operator === "<" && event.startTime > eventDateFilter.timeStamp) ||
+        (eventDateFilter.operator === ">" && event.startTime < eventDateFilter.timeStamp)
+      ) {
+        events.splice(i, 1);
+        continue;
+      }
+    }
+    event.startTime = convertTimeStamp(event.startTime);
+    event.endTime = convertTimeStamp(event.endTime);
+    event.category = categoryMap[event.pid] || "";
+    // Remap category
+    if (categoryRemap[event.category]) {
+      event.category = categoryRemap[event.category];
+    }
+    // User and remap user
+    event.user = userRemap[userMap[event.author]] || userMap[event.author];
+  }
+  return events;
+};
+
 const exportCsv = async (containers, fileName) => {
   const csvWriter = createCsvWriter({
     path: `export/${fileName}.csv`,
-    header: csvWriterHeader
+    header: fileName === "events" ? eventCsvWriterHeader : defaultCsvWriterHeader
   });
   csvWriter.writeRecords(containers).then(() => {
     console.log("CSV file successfully created");
   });
-};
-
-const addPageStatistics = (arrs, map, types) => {
-  arrs.forEach((containers, i) => {
-    const type = types[i];
-    for (const container of containers) {
-      if (map[container.pid]) {
-        map[container.pid][type]++;
-      } else {
-        map["0"][type]++;
-      }
-    }
-  });
-  // Remove empty pages
-  for (const key in map) {
-    if (map.hasOwnProperty(key)) {
-      if (!map[key].news && !map[key].article) {
-        delete map[key];
-      }
-    }
-  }
-  return map;
 };
 
 const addUserStatistics = arrs => {
@@ -322,20 +338,22 @@ const transformer = async () => {
     rawContent,
     rawNews,
     rawArticles,
-    rawPages,
     rawNewsArchive,
-    rawUsers
-    // rawFiles
+    rawPages,
+    rawUsers,
+    rawEvents,
+    rawCalendar
   ] = await importAllCsv();
   const content = modifyCsv(rawContent, "content");
   let news = modifyCsv(rawNews, "news");
   let articles = modifyCsv(rawArticles, "article");
-  let pageMap = createPageMap(rawPages, rawNewsArchive);
+  const newsCategoryMap = createCategoryMap(rawNewsArchive);
+  const pageCategoryMap = createCategoryMap(rawPages);
   const userMap = createUserMap(rawUsers);
   news = addContent(news, content, "news");
   articles = addContent(articles, content, "article");
-  news = addFields(news, pageMap, userMap);
-  articles = addFields(articles, pageMap, userMap);
+  news = addFields(news, newsCategoryMap, userMap);
+  articles = addFields(articles, pageCategoryMap, userMap);
   if (useNewsWhitelist) {
     news = passWhitelistFilter(news, newsWhitelist);
   }
@@ -343,7 +361,6 @@ const transformer = async () => {
     articles = passWhitelistFilter(articles, articleWhitelist);
   }
   if (showStatistics) {
-    pageMap = addPageStatistics([news, articles], pageMap, ["news", "article"]);
     const userStatistics = addUserStatistics([news, articles]);
     console.log(
       `Containers before Remove: # of News ${rawNews.length}, # of Articles ${rawArticles.length}`
@@ -351,11 +368,16 @@ const transformer = async () => {
     console.log(
       `Containers after Remove: # of News ${news.length}, # of Articles ${articles.length}.`
     );
-    console.log("Page Map with Statistics", pageMap);
     console.log("User Statistics", userStatistics);
   }
   await exportCsv(news, "news");
   await exportCsv(articles, "articles");
+  if (addEvents) {
+    let events = modifyCsv(rawEvents, "event");
+    const eventCategoryMap = createCategoryMap(rawCalendar);
+    events = addEventFields(events, eventCategoryMap, userMap);
+    await exportCsv(events, "events");
+  }
 };
 
 transformer();

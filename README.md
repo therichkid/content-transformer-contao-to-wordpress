@@ -34,8 +34,10 @@ This script's main purpose is to merge the content back to the container.
 
 - Transform **news**
 - Transform **articles**
+- Transform **events**
 - Sanitize content
 - Add categories based on the pages and news archive tables
+- Filter content based on a provided timestamp
 - Only keep content from whitelisted categories
 - Remap categories
 - Add and remap authors
@@ -55,9 +57,16 @@ The script needs the following files from the Contao database in the **import** 
 | `tl_content.csv`      | Huge table that includes the content for all news and articles |
 | `tl_news.csv`         | Container table for news                                       |
 | `tl_article.csv`      | Container table for articles                                   |
-| `tl_page.csv`         | Used to add the category to news and articles                  |
-| `tl_news_archive.csv` | Used to add the category to news and articles                  |
+| `tl_news_archive.csv` | Used to add the category to news                               |
+| `tl_page.csv`         | Used to add the category to articles                           |
 | `tl_user.csv`         | Has information about the user names                           |
+
+Optional, only needed to export events:
+
+| File name                | Description                        |
+| ------------------------ | ---------------------------------- |
+| `tl_calendar_events.csv` | Main table for events              |
+| `tl_calendar.csv`        | Used to add the category to events |
 
 A database table export in .csv format can be done via phpMyAdmin.
 
@@ -75,6 +84,13 @@ Set the options in the beginning of the `content-transformer.js` file.
   - `operator`: As String
     - `"<"`: Keep all content **older** than the timestamp
     - `">"`: Keep all content **newer** than the timestamp
+
+### Export events
+
+- Set `addEvents` to true
+- Events can also be filtered by date
+- The `eventDateFilter` behaves similar to the `datefilter`
+- _Note_: The optional files become mandatory when `addEvents` is set to true
 
 ### Sanitize content
 
@@ -117,6 +133,10 @@ The script creates two files in the export folder:
 
 - `articles.csv`
 - `news.csv`
+
+When `addEvents` was set to true, it creates a third file:
+
+- `events.csv`
 
 These files can then be imported into WordPress. Following WordPress plugins were tested successfully:
 
