@@ -63,6 +63,8 @@ const defaultCsvWriterHeader = [
 
 const eventCsvWriterHeader = [
   { id: "title", title: "Title" },
+  { id: "text", title: "Content" },
+  { id: "teaser", title: "Excerpt" },
   { id: "user", title: "Author" },
   { id: "startTime", title: "Start Time" },
   { id: "endTime", title: "End Time" },
@@ -101,6 +103,7 @@ const columnsToKeep = {
     id: "int",
     pid: "int",
     title: "string",
+    teaser: "string",
     author: "int",
     startTime: "int",
     endTime: "int",
@@ -200,10 +203,18 @@ const addContent = (containers, content, type) => {
   // Remove empty containers & sanitize text and teaser
   for (let i = containers.length - 1; i >= 0; i--) {
     const container = containers[i];
-    if (useDateFilter) {
+    if (type !== "calendar_events" && useDateFilter) {
       if (
         (dateFilter.operator === "<" && container.tstamp > dateFilter.timeStamp) ||
         (dateFilter.operator === ">" && container.tstamp < dateFilter.timeStamp)
+      ) {
+        containers.splice(i, 1);
+        continue;
+      }
+    } else if (type === "calendar_events" && useEventDateFilter) {
+      if (
+        (eventDateFilter.operator === "<" && container.startTime > eventDateFilter.timeStamp) ||
+        (eventDateFilter.operator === ">" && container.startTime < eventDateFilter.timeStamp)
       ) {
         containers.splice(i, 1);
         continue;
@@ -213,7 +224,7 @@ const addContent = (containers, content, type) => {
       container.text = sanitizeContent(container.text);
       container.teaser = sanitizeContent(container.teaser);
     }
-    if (!container.text) {
+    if (type !== "calendar_events" && !container.text) {
       containers.splice(i, 1);
     }
   }
@@ -256,7 +267,7 @@ const addFields = (containers, categoryMap, userMap) => {
     container.date = convertTimeStamp(container.tstamp);
     container.category = categoryMap[container.pid] || "";
     // Remap category
-    if (categoryRemap[container.category]) {
+    if (Object.keys(categoryRemap).includes(container.category)) {
       container.category = categoryRemap[container.category];
     }
     // User and remap user
@@ -286,20 +297,11 @@ const passWhitelistFilter = (containers, whitelist) => {
 const addEventFields = (events, categoryMap, userMap) => {
   for (let i = events.length - 1; i >= 0; i--) {
     const event = events[i];
-    if (useEventDateFilter) {
-      if (
-        (eventDateFilter.operator === "<" && event.startTime > eventDateFilter.timeStamp) ||
-        (eventDateFilter.operator === ">" && event.startTime < eventDateFilter.timeStamp)
-      ) {
-        events.splice(i, 1);
-        continue;
-      }
-    }
     event.startTime = convertTimeStamp(event.startTime);
     event.endTime = convertTimeStamp(event.endTime);
     event.category = categoryMap[event.pid] || "";
     // Remap category
-    if (categoryRemap[event.category]) {
+    if (Object.keys(categoryRemap).includes(event.category)) {
       event.category = categoryRemap[event.category];
     }
     // User and remap user
@@ -375,6 +377,7 @@ const transformer = async () => {
   if (addEvents) {
     let events = modifyCsv(rawEvents, "event");
     const eventCategoryMap = createCategoryMap(rawCalendar);
+    events = addContent(events, content, "calendar_events");
     events = addEventFields(events, eventCategoryMap, userMap);
     await exportCsv(events, "events");
   }
