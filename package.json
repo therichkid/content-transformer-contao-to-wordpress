@@ -6,7 +6,7 @@
     "csv-parser": "^2.3.2",
     "csv-writer": "^1.6.0",
     "prettier": "^2.0.5",
-    "sanitize-html": "^1.23.0"
+    "sanitize-html": "^2.3.2"
   },
   "devDependencies": {},
   "scripts": {
